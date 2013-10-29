@@ -30,15 +30,28 @@ class SlidingPiece < Piece
     super(position, board, name, color)
   end
 
-  def moves
+  def occupied?(x,y) # board position !nil
+    !self.board.board[x][y].nil?
+  end
+
+  def edible?(x,y) # self and another piece share same color
+    self.color != self.board.board[x][y].color
+  end
+
+  def moves #still has to check that piece eatable
     possible_moves = []
-    self.move_dirs.each do |offset| #(1,1)
-      x = position[0] #0
-      y = position[1] #0
-      while (x+offset[0]).between?(0,7) && (y+offset[1]).between?(0,7)
-        possible_moves << [x+offset[0],y+offset[1]]
-        x, y = x+offset[0],y+offset[1]
-        break if !self.board.board[x][y].nil?
+    self.move_dirs.each do |offset|
+      d_x = position[0] + offset[0]
+      d_y = position[1] + offset[1]
+      while (d_x).between?(0,7) && (d_y).between?(0,7)
+        if occupied?(d_x,d_y)
+          possible_moves << [d_x,d_y] if edible?(d_x,d_y)
+          break
+        else
+          possible_moves << [d_x,d_y]
+          d_x = d_x + offset[0]
+          d_y = d_y + offset[1]
+        end
       end
     end
     possible_moves
@@ -53,13 +66,23 @@ class SteppingPiece < Piece
     super(position, board, name, color)
   end
 
-  def moves
+  def occupied?(x,y) # board position !nil
+    !self.board.board[x][y].nil?
+  end
+
+  def inedible?(x,y) # self and another piece share same color
+    #p "#{self.color}  #{self.board.board[x][y].color}"
+    self.color == self.board.board[x][y].color
+  end
+
+  def moves   #still has to check that piece eatable
     possible_moves =[]
-    x = position[0]
-    y = position[1]
     self.move_dirs.each do |offset|
-      if (x+offset[0]).between?(0,7) && (y+offset[1]).between?(0,7)
-        possible_moves << [x+offset[0],y+offset[1]]
+      d_x = position[0] + offset[0]
+      d_y = position[1] + offset[1]
+
+      if (d_x).between?(0,7) && (d_y).between?(0,7)
+        possible_moves << [d_x,d_y] unless occupied?(d_x,d_y) && inedible?(d_x,d_y)
       end
     end
 
@@ -240,8 +263,8 @@ class Board
 end
 
 game = Board.new
-king = King.new([1,1], 2,2,2)
-game.board[1][1] = king
+king = King.new([1,1], 2,2,:w)
+game.board[2][2] = king
 game.print_board
-bishop = game.board[0][2]
-p bishop.moves
+knight = game.board[0][1]
+p knight.moves
