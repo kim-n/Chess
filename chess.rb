@@ -1,3 +1,4 @@
+# PIECE CLASS---------------------
 class Piece
   attr_accessor :position, :board, :name, :color
 
@@ -8,6 +9,17 @@ class Piece
     self.color = color
   end
 
+  def dup
+    piece_dup = self.class.new(nil,nil,nil,nil)
+
+    piece_dup.position = self.position
+    piece_dup.board = self.board
+    piece_dup.name = self.name
+    piece_dup.color = self.color
+
+    piece_dup
+  end
+
   def moves
     #returns array of places that piece can move to
     p "Piece"
@@ -15,6 +27,19 @@ class Piece
 
   def valid_moves
     # filters out the #moves of a Piece that would leave the player in check
+    possible_moves = self.moves
+    arr = []
+
+    possible_moves.each do |pos|
+      duped_board = self.board.dup
+      duped_board.move!(self.position, pos)
+      # p duped_board.checked?(self.color)
+      # puts duped_board.board[pos[0]][pos[1]].color
+      duped_board.print_board
+    # arr << pos unless duped_board.checked?(duped_board.board[pos[0]][pos[1]].color)
+    end
+
+    arr
   end
 
   def move_into_check?(pos)
@@ -24,16 +49,20 @@ class Piece
 
 end
 
+# SLIDING PIECE ---------------------
+
 class SlidingPiece < Piece
 
   def initialize(position, board, name, color)
     super(position, board, name, color)
   end
 
+  #HELPER move to Private
   def occupied?(x,y) # board position !nil
-    !self.board.board[x][y].nil?
+    !self.board.board[x][y].nil? # if not nil, then occupied == true
   end
 
+  #HELPER move to Private
   def edible?(x,y) # self and another piece share same color
     self.color != self.board.board[x][y].color
   end
@@ -48,17 +77,18 @@ class SlidingPiece < Piece
           possible_moves << [d_x,d_y] if edible?(d_x,d_y)
           break
         else
-          possible_moves << [d_x,d_y]
+          possible_moves << [d_x, d_y]
           d_x = d_x + offset[0]
           d_y = d_y + offset[1]
         end
       end
     end
+
     possible_moves
   end
-
 end
 
+# STEPPING PIECE ---------------------
 
 class SteppingPiece < Piece
 
@@ -66,10 +96,12 @@ class SteppingPiece < Piece
     super(position, board, name, color)
   end
 
+  #HELPER move to Private
   def occupied?(x,y) # board position !nil
     !self.board.board[x][y].nil?
   end
 
+  #HELPER move to Private
   def inedible?(x,y) # self and another piece share same color
     #p "#{self.color}  #{self.board.board[x][y].color}"
     self.color == self.board.board[x][y].color
@@ -89,6 +121,8 @@ class SteppingPiece < Piece
     possible_moves
   end
 end
+
+# INDIVIDUAL PIECES ---------------------
 
 class Knight < SteppingPiece
 
@@ -111,6 +145,18 @@ class Knight < SteppingPiece
       [ 2,  1]
     ]
   end
+
+  # def dup
+  #   piece_dup = Knight.new(nil,nil,nil,nil)
+  #
+  #   piece_dup.position = self.position
+  #   piece_dup.board = self.board
+  #   piece_dup.name = self.name
+  #   piece_dup.color = self.color
+  #
+  #   piece_dup
+  # end
+
 end
 
 class King < SteppingPiece
@@ -186,12 +232,14 @@ class Castle < SlidingPiece
   end
 end
 
+# SLIDING PIECE ---------------------
+
 class Board
   attr_accessor :board
 
-  def initialize
+  def initialize(dup = false)
     self.board = Array.new(8) { Array.new(8) {nil} }
-    create_board
+    create_board unless dup
   end
 
   def create_board
@@ -203,11 +251,10 @@ class Board
       Q: [[0,4], [7,4]]
     }
 
-
     positions.each do |name, positions|
       positions.each do |pos|
         x, y = pos[0], pos[1]
-        color = pos[0] == 0 ? :w : :b
+        color = pos[0] == 0 ? :b : :w
         if name == :C
           self.board[x][y] = Castle.new(pos, self, name, color)
         elsif name == :B
@@ -221,10 +268,42 @@ class Board
         end
       end
     end
+  end  # END BOARD#create_board
 
+  #HELPER move to private
+  def find_king(color)
+    self.board.each do |row|
+      row.each do |piece|
+        if !piece.nil?
+          return piece.position if piece.name == :K && piece.color == color
+        end
+      end
+    end
+  end
+
+  #HELPER move to private
+  def find_oponents(color)
+    oponent_color = color == :w ? :b : :w
+    oponents = []
+    self.board.each do |row|
+      row.each do |piece|
+        next if piece.nil?
+        oponents << piece if piece.color == oponent_color
+      end
+    end
+
+    oponents
   end
 
   def checked?(color)
+    king_pos = find_king(color)
+    oponents = find_oponents(color)
+    checked = false
+    oponents.each do |opponent_piece|
+      checked = true if opponent_piece.moves.include?(king_pos)
+    end
+
+    checked
     # returns whether a player is in check
     # finding the position of the king on the board
     # if any of the opposing pieces can move to that position
@@ -234,7 +313,31 @@ class Board
     # If the player is in check, and if none of the player's pieces have any #valid_moves, then the player is in checkmate.
   end
 
+
+  def dup
+    dup_board = self.class.new(true)
+
+    8.times do |x|
+      8.times do |y|
+        dup_board.board[x][y] = self.board[x][y].dup unless self.board[x][y].nil?
+      end
+    end
+
+    dup_board
+
+  end
+
   def move(start_pos, end_pos)
+    start_x, start_y = start_pos[0], start_pos[1]
+    end_x, end_y = end_pos[0], end_pos[1]
+
+    if self.board[start_x][start_x].nil?
+      #raise exception there is no piece at start
+    end
+    if !self.board[start_x][start_y].moves.include?(board[end_x][end_].position)
+      #raise end position not in possible moves
+    end
+
     # should update the 2d grid and also the moved piece's position.
     # raise exception if: (a) there is no piece at start or (b) the piece cannot move to end
     # can only make valid moves
@@ -242,9 +345,19 @@ class Board
     # Board#move should raise an exception if it would leave you in check.
   end
 
-  def dup
-    # deep dup for #moves_into_check method
+
+  def move!(s_pos, e_pos)
+    start_x, start_y = s_pos[0], s_pos[1]
+    end_x, end_y = e_pos[0], e_pos[1]
+
+    #Removes stray pointers
+    self.board[end_x][end_y].board = nil if !self.board[end_x][end_y].nil?
+
+    self.board[end_x][end_y] = self.board[start_x][start_y]
+    self.board[end_x][end_y].position = e_pos if !self.board[end_x][end_y].nil?
+    self.board[start_x][start_y] = nil
   end
+
 
   def print_board
     board.each do |row|
@@ -258,13 +371,46 @@ class Board
       p pretty_row
     end
   end
-
-
 end
 
-game = Board.new
-king = King.new([1,1], 2,2,:w)
-game.board[2][2] = king
+fi_game = Board.new
+
+game = fi_game.dup
+#game.move!([7,4], [6,3])
+
+game.move!([0,4], [1,3])
+
 game.print_board
-knight = game.board[0][1]
-p knight.moves
+
+queen = game.board[1][3]
+p queen.name
+
+p "#{game.board[0][0].color} top color"
+p game.checked?(:w)
+
+p queen.valid_moves
+
+
+# king = King.new([1,1], 2,2,:w)
+# game.board[2][2] = king
+#game.print_board
+# knight = game.board[0][1]
+# p knight.moves
+# game.move!([0,0], [4,4])
+#
+# #game.print_board
+#
+# #knight = Knight.new(0,1,2,3)
+# # king = knight.dup
+# # p knight
+#
+#
+# new_game = game.dup
+# game.move!([4,4], [1,1])
+# game.print_board
+# p game.object_id
+# new_game.print_board
+# p new_game.object_id
+#
+# p game.board[0][1].object_id
+# p new_game.board[0][4].object_id
