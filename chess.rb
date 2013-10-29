@@ -26,27 +26,28 @@ end
 
 class SlidingPiece < Piece
 
-  HORIZONTALS = [
-    [0,  1],
-    [1,  0],
-    [-1, 0],
-    [0, -1]
-  ]
-
   def initialize(position, board, name, color)
     super(position, board, name, color)
   end
 
   def moves
-    #call move_dirs
-
+    possible_moves = []
+    self.move_dirs.each do |offset| #(1,1)
+      x = position[0] #0
+      y = position[1] #0
+      while (x+offset[0]).between?(0,7) && (y+offset[1]).between?(0,7)
+        possible_moves << [x+offset[0],y+offset[1]]
+        x, y = x+offset[0],y+offset[1]
+        break if !self.board.board[x][y].nil?
+      end
+    end
+    possible_moves
   end
 
 end
 
 
 class SteppingPiece < Piece
-
 
   def initialize(position, board, name, color)
     super(position, board, name, color)
@@ -108,17 +109,6 @@ class King < SteppingPiece
   end
 end
 
-class Bishop < SlidingPiece
-
-  def initialize(position, board, name, color)
-    super(position, board, name, color)
-  end
-
-  def move_dirs
-
-  end
-end
-
 class Queen < SlidingPiece
 
   def initialize(position, board, name, color)
@@ -126,9 +116,34 @@ class Queen < SlidingPiece
   end
 
   def move_dirs
-
+    [
+      [ 0, 1],  #horizontals & verticals
+      [ 1, 0],
+      [-1, 0],
+      [ 0,-1],
+      [ 1, 1],  #diagonals
+      [-1,-1],
+      [ 1,-1],
+      [-1, 1]
+    ]
   end
 
+end
+
+class Bishop < SlidingPiece
+
+  def initialize(position, board, name, color)
+    super(position, board, name, color)
+  end
+
+  def move_dirs
+    [
+      [ 1, 1],
+      [-1,-1],
+      [ 1,-1],
+      [-1, 1]
+    ]
+  end
 end
 
 class Castle < SlidingPiece
@@ -138,7 +153,12 @@ class Castle < SlidingPiece
   end
 
   def move_dirs
-
+    [
+      [ 0, 1],
+      [ 1, 0],
+      [-1, 0],
+      [ 0,-1]
+    ]
 
   end
 end
@@ -219,4 +239,9 @@ class Board
 
 end
 
-Board.new.print_board
+game = Board.new
+king = King.new([1,1], 2,2,2)
+game.board[1][1] = king
+game.print_board
+bishop = game.board[0][2]
+p bishop.moves
