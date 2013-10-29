@@ -10,6 +10,7 @@ class Piece
 
   def moves
     #returns array of places that piece can move to
+    p "Piece"
   end
 
   def valid_moves
@@ -25,28 +26,43 @@ end
 
 class SlidingPiece < Piece
 
+  HORIZONTALS = [
+    [0,  1],
+    [1,  0],
+    [-1, 0],
+    [0, -1]
+  ]
 
   def initialize(position, board, name, color)
     super(position, board, name, color)
   end
 
   def moves
-    # uses #move_dirs
-    # returns array of places that piece can move to
-    # know what directions a piece can move in
+    #call move_dirs
+
   end
+
 end
 
 
 class SteppingPiece < Piece
 
+
   def initialize(position, board, name, color)
     super(position, board, name, color)
   end
 
   def moves
-    # returns array of places that piece can move to
-    # know what directions a piece can move in
+    possible_moves =[]
+    x = position[0]
+    y = position[1]
+    self.move_dirs.each do |offset|
+      if (x+offset[0]).between?(0,7) && (y+offset[1]).between?(0,7)
+        possible_moves << [x+offset[0],y+offset[1]]
+      end
+    end
+
+    possible_moves
   end
 end
 
@@ -55,28 +71,44 @@ class Knight < SteppingPiece
   def initialize(position, board, name, color)
     super(position, board, name, color)
   end
-end
 
+  def move_dirs
+    # uses #move_dirs
+    # returns array of places that piece can move to
+    # know what directions a piece can move in
+    [
+      [-2, -1],
+      [-2,  1],
+      [-1,  2],
+      [-1, -2],
+      [ 1,  2],
+      [ 1, -2],
+      [ 2, -1],
+      [ 2,  1]
+    ]
+  end
+end
 
 class King < SteppingPiece
 
   def initialize(position, board, name, color)
     super(position, board, name, color)
   end
+
+  def move_dirs
+    # uses #move_dirs
+    # returns array of places that piece can move to
+    # know what directions a piece can move in
+    [
+      [ 0, 1],
+      [ 1, 0],
+      [-1, 0],
+      [ 0,-1]
+    ]
+  end
 end
 
 class Bishop < SlidingPiece
-
-  def initialize(position, board, name, color)
-    super(position, board, name, color)
-  end
-
-  def move_dirs
-
-  end
-end
-
-class Rook < SlidingPiece
 
   def initialize(position, board, name, color)
     super(position, board, name, color)
@@ -106,6 +138,7 @@ class Castle < SlidingPiece
   end
 
   def move_dirs
+
 
   end
 end
