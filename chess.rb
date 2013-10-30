@@ -21,7 +21,8 @@ class Piece
   end
 
   def moves
-    #returns array of places that piece can move to
+    # returns array of places that piece can move to
+    # this should never be called, subclasses version should be called
     p "Piece"
   end
 
@@ -34,7 +35,7 @@ class Piece
       duped_board.move!(self.position, pos)
       duped_board.checked?(self.color)
     end
-    
+
     possible_moves
   end
 
@@ -55,12 +56,12 @@ class SlidingPiece < Piece
 
   #HELPER move to Private
   def occupied?(x,y) # board position !nil
-    !self.board.board[x][y].nil? # if not nil, then occupied == true
+    !self.board.grid[x][y].nil? # if not nil, then occupied == true
   end
 
   #HELPER move to Private
   def edible?(x,y) # self and another piece share same color
-    self.color != self.board.board[x][y].color
+    self.color != self.board.grid[x][y].color
   end
 
   def moves #still has to check that piece eatable
@@ -94,13 +95,13 @@ class SteppingPiece < Piece
 
   #HELPER move to Private
   def occupied?(x,y) # board position !nil
-    !self.board.board[x][y].nil?
+    !self.board.grid[x][y].nil?
   end
 
   #HELPER move to Private
   def inedible?(x,y) # self and another piece share same color
-    #p "#{self.color}  #{self.board.board[x][y].color}"
-    self.color == self.board.board[x][y].color
+    #p "#{self.color}  #{self.board.grid[x][y].color}"
+    self.color == self.board.grid[x][y].color
   end
 
   def moves   #still has to check that piece eatable
@@ -141,18 +142,6 @@ class Knight < SteppingPiece
       [ 2,  1]
     ]
   end
-
-  # def dup
-  #   piece_dup = Knight.new(nil,nil,nil,nil)
-  #
-  #   piece_dup.position = self.position
-  #   piece_dup.board = self.board
-  #   piece_dup.name = self.name
-  #   piece_dup.color = self.color
-  #
-  #   piece_dup
-  # end
-
 end
 
 class King < SteppingPiece
@@ -231,10 +220,10 @@ end
 # SLIDING PIECE ---------------------
 
 class Board
-  attr_accessor :board
+  attr_accessor :grid
 
   def initialize(dup = false)
-    self.board = Array.new(8) { Array.new(8) {nil} }
+    self.grid = Array.new(8) { Array.new(8) {nil} }
     create_board unless dup
   end
 
@@ -252,15 +241,15 @@ class Board
         x, y = pos[0], pos[1]
         color = pos[0] == 0 ? :b : :w
         if name == :C
-          self.board[x][y] = Castle.new(pos, self, name, color)
+          self.grid[x][y] = Castle.new(pos, self, name, color)
         elsif name == :B
-          self.board[x][y] = Bishop.new(pos, self, name, color)
+          self.grid[x][y] = Bishop.new(pos, self, name, color)
         elsif name == :N
-          self.board[x][y] = Knight.new(pos, self, name, color)
+          self.grid[x][y] = Knight.new(pos, self, name, color)
         elsif name == :K
-          self.board[x][y] = King.new(pos, self, name, color)
+          self.grid[x][y] = King.new(pos, self, name, color)
         elsif name == :Q
-          self.board[x][y] = Queen.new(pos, self, name, color)
+          self.grid[x][y] = Queen.new(pos, self, name, color)
         end
       end
     end
@@ -268,7 +257,7 @@ class Board
 
   #HELPER move to private
   def find_king(color)
-    self.board.each do |row|
+    self.grid.each do |row|
       row.each do |piece|
         if !piece.nil?
           return piece.position if piece.name == :K && piece.color == color
@@ -281,7 +270,7 @@ class Board
   def find_oponents(color)
     oponent_color = color == :w ? :b : :w
     oponents = []
-    self.board.each do |row|
+    self.grid.each do |row|
       row.each do |piece|
         next if piece.nil?
         oponents << piece if piece.color == oponent_color
@@ -315,13 +304,13 @@ class Board
 
     8.times do |x|
       8.times do |y|
-        unless self.board[x][y].nil?
-          dup_board.board[x][y] = self.board[x][y].dup  #dup the piece
-          dup_board.board[x][y].board = dup_board       #sets dupped piece.board to dupped board
+        unless self.grid[x][y].nil?
+          dup_board.grid[x][y] = self.grid[x][y].dup  #dup the piece
+          dup_board.grid[x][y].board = dup_board       #sets dupped piece.board to dupped board
         end
       end
     end
-    
+
     dup_board
   end
 
@@ -329,10 +318,10 @@ class Board
     start_x, start_y = start_pos[0], start_pos[1]
     end_x, end_y = end_pos[0], end_pos[1]
 
-    if self.board[start_x][start_x].nil?
+    if self.grid[start_x][start_x].nil?
       #raise exception there is no piece at start
     end
-    if !self.board[start_x][start_y].moves.include?(board[end_x][end_].position)
+    if !self.grid[start_x][start_y].moves.include?(grid[end_x][end_].position)
       #raise end position not in possible moves
     end
 
@@ -349,16 +338,16 @@ class Board
     end_x, end_y = e_pos[0], e_pos[1]
 
     #Removes stray pointers
-    self.board[end_x][end_y].board = nil if !self.board[end_x][end_y].nil?
+    self.grid[end_x][end_y].board = nil if !self.grid[end_x][end_y].nil?
 
-    self.board[end_x][end_y] = self.board[start_x][start_y]
-    self.board[end_x][end_y].position = e_pos if !self.board[end_x][end_y].nil?
-    self.board[start_x][start_y] = nil
+    self.grid[end_x][end_y] = self.grid[start_x][start_y]
+    self.grid[end_x][end_y].position = e_pos if !self.grid[end_x][end_y].nil?
+    self.grid[start_x][start_y] = nil
   end
 
 
   def print_board
-    board.each do |row|
+    grid.each do |row|
       pretty_row = row.map do |piece|
         if piece.nil?
           " "
@@ -394,9 +383,9 @@ game.move!([7,4], [6,3])
 game.print_board
 puts
 
-w_queen = game.board[1][3]
+w_queen = game.grid[1][3]
 
-b_queen = game.board[6][3]
+b_queen = game.grid[6][3]
 
 
 #print w_queen.moves
