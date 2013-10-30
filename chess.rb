@@ -2,6 +2,9 @@
 class Piece
   attr_accessor :position, :board, :name, :color
 
+  ORTHOGONAL = [[0,1],[1,0]]
+  DIAGONALS = [[1,1]]
+
   def initialize(position, board, name, color)
     self.position = position
     self.board = board
@@ -10,7 +13,7 @@ class Piece
   end
 
   def dup
-    piece_dup = self.class.new(nil,nil,nil,nil)
+    piece_dup = self.class.new(position, board, nil,nil)
 
     piece_dup.position = self.position
     piece_dup.board = self.board
@@ -50,8 +53,8 @@ class SlidingPiece < Piece
   end
 
   #HELPER move to Private
-  def occupied?(x,y) # board position !nil
-    !self.board.grid[x][y].nil? # if not nil, then occupied == true
+  def occupied?(x, y) # board position !nil
+    !!self.board.grid[x][y] # if not nil, then occupied == true
   end
 
   #HELPER move to Private
@@ -66,7 +69,7 @@ class SlidingPiece < Piece
       d_y = position[1] + offset[1]
       while (d_x).between?(0,7) && (d_y).between?(0,7)
         if occupied?(d_x,d_y)
-          possible_moves << [d_x,d_y] if edible?(d_x,d_y)
+          possible_moves << [d_x, d_y] if edible?(d_x, d_y)
           break
         else
           possible_moves << [d_x, d_y]
@@ -145,85 +148,7 @@ class Pawn < SteppingPiece
     super(position, board, name, color)
   end
 
-
-  def moves  #still has to check that piece eatable
-    possible_moves =[]
-    if color == :b && position[0] == 1
-      (self.regular_moves + self.initial_moves).each do |offset|
-        next if offset[0] < 0
-        d_x = position[0] + offset[0]
-        d_y = position[1] + offset[1]
-
-        if (d_x).between?(0,7) && (d_y).between?(0,7)
-          possible_moves << [d_x,d_y] unless occupied?(d_x,d_y) # && inedible?(d_x,d_y)
-        end
-      end
-    end
-
-    if color == :b && position[0] != 1
-      (self.regular_moves).each do |offset|
-        next if offset[0] < 0
-        d_x = position[0] + offset[0]
-        d_y = position[1] + offset[1]
-
-        if (d_x).between?(0,7) && (d_y).between?(0,7)
-          possible_moves << [d_x,d_y] unless occupied?(d_x,d_y) # && inedible?(d_x,d_y)
-        end
-      end
-    end
-
-    if color == :b
-      (self.diagonal_moves).each do |offset|
-        next if offset[0] < 0
-        d_x = position[0] + offset[0]
-        d_y = position[1] + offset[1]
-
-        if (d_x).between?(0,7) && (d_y).between?(0,7)
-          possible_moves << [d_x,d_y] if (occupied?(d_x,d_y) && !inedible?(d_x,d_y))
-        end
-      end
-    end
-
-    if color == :w && position[0] == 6
-      (self.regular_moves + self.initial_moves).each do |offset|
-        next if offset[0] > 0
-        d_x = position[0] + offset[0]
-        d_y = position[1] + offset[1]
-
-        if (d_x).between?(0,7) && (d_y).between?(0,7)
-          possible_moves << [d_x,d_y] unless occupied?(d_x,d_y) # && inedible?(d_x,d_y)
-        end
-      end
-    end
-
-    if color == :w && position[0] != 6
-      (self.regular_moves).each do |offset|
-        next if offset[0] > 0
-        d_x = position[0] + offset[0]
-        d_y = position[1] + offset[1]
-
-        if (d_x).between?(0,7) && (d_y).between?(0,7)
-          possible_moves << [d_x,d_y] unless occupied?(d_x,d_y) # && inedible?(d_x,d_y)
-        end
-      end
-    end
-
-    if color == :w
-      (self.diagonal_moves).each do |offset|
-        next if offset[0] > 0
-        d_x = position[0] + offset[0]
-        d_y = position[1] + offset[1]
-
-        if (d_x).between?(0,7) && (d_y).between?(0,7)
-          possible_moves << [d_x,d_y] if (occupied?(d_x,d_y) && !inedible?(d_x,d_y))
-        end
-      end
-    end
-
-    possible_moves
-  end
-
-  def moves_compact
+  def moves
     foward =     [
       [ 1, 0], #black
     ]
@@ -260,37 +185,6 @@ class Pawn < SteppingPiece
     end
     possible_moves
   end
-
-  def move_dirs
-    # uses #move_dirs
-    # returns array of places that piece can move to
-    # know what directions a piece can move in
-
-  end
-
-  def regular_moves
-    [
-      [ 1, 0], #black
-      [-1, 0]  #white
-    ]
-  end
-
-  def initial_moves
-    [
-      [ 2, 0], #black
-      [-2, 0], #white
-    ]
-  end
-
-  def diagonal_moves
-    [
-      [ 1, 1], #black
-      [ 1,-1], #black
-      [-1, 1], #white
-      [-1,-1] #white
-    ]
-  end
-
 
 end
 
@@ -369,11 +263,14 @@ end
 
 # SLIDING PIECE ---------------------
 
+class MoveError < StandardError
+end
+
 class Board
   attr_accessor :grid
 
   def initialize(dup = false)
-    self.grid = Array.new(8) { Array.new(8) {nil} }
+    self.grid = Array.new(8) { Array.new(8) { nil } }
     create_board unless dup
   end
 
@@ -424,18 +321,27 @@ class Board
 
   #HELPER move to private
   def find_king(color)
-    king = color == :w ? "\u2654" : "\u265A"
-    self.grid.each do |row|
-      row.each do |piece|
-        if !piece.nil?
-          return piece.position if piece.name == king && piece.color == color
-        end
-      end
+
+    king = self.grid.flatten.select do |piece|
+      !piece.nil? && piece.class == King && piece.color == color
     end
+
+    king.first.position
+
+    # king = color == :w ? "\u2654" : "\u265A"
+#     self.grid.each do |row|
+#       row.each do |piece|
+#         if !piece.nil?
+#           return piece.position if piece.name == king && piece.color == color
+#         end
+#       end
+#     end
   end
 
   #HELPER move to private
   def find_pieces(color)
+    # compact + select
+
     pieces = []
     self.grid.each do |row|
       row.each do |piece|
@@ -451,29 +357,36 @@ class Board
     king_pos = find_king(color)
     oponent_color = color == :w ? :b : :w
     oponents = find_pieces(oponent_color)
-    checked = false
-    oponents.each do |opponent_piece|
-      checked = true if opponent_piece.moves.include?(king_pos)
+
+    oponents.any? do |piece|
+      piece.moves.include?(king_pos)
     end
-    checked
+
+    # checked = false
+    # oponents.each do |opponent_piece|
+    #   checked = true if opponent_piece.moves.include?(king_pos)
+    # end
+    # checked
     # returns whether a player is in check
     # finding the position of the king on the board
     # if any of the opposing pieces can move to that position
   end
 
   def checkmate?(color)
-    checkmate = false
-    if checked?(color)
-      my_pieces = find_pieces(color)
+    # checkmate = false
+    # if checked?(color)
+    #   my_pieces = find_pieces(color)
+    #
+    #   my_pieces.delete_if do |piece|
+    #     piece.valid_moves.empty?
+    #   end
+    #
+    #   checkmate = my_pieces.empty?
+    # end
+    #
+    # checkmate
 
-      my_pieces.delete_if do |piece|
-        piece.valid_moves.empty?
-      end
-
-      checkmate = my_pieces.empty?
-    end
-
-    checkmate
+    checked?(color) && find_pieces(color).all? { |piece| piece.valid_moves.empty? }
     # If the player is in check, and if none of the player's pieces have any #valid_moves, then the player is in checkmate.
   end
 
@@ -493,20 +406,22 @@ class Board
     dup_board
   end
 
-  def move(start_pos, end_pos)
+  def move(start_pos, end_pos, current_color)
     start_x, start_y = start_pos[0], start_pos[1]
     end_x, end_y = end_pos[0], end_pos[1]
     move_to_object = self.grid[start_x][start_y]
 
     if move_to_object.nil?
       #raise exception there is no piece at start
-      raise ArgumentError.new "Wrong start position, no piece yo"
-    elsif !move_to_object.moves.include?(grid[end_x][end_y].position)
+      raise MoveError.new "Wrong start position, no piece yo"
+    elsif !move_to_object.moves.include?(end_pos)
       #raise end position not in possible moves
-      raise ArgumentError.new "Wrong end position, not possible"
+      raise MoveError.new "Wrong end position, not possible"
     elsif !move_to_object.valid_moves.include?(end_pos)
       #raise exception, that move will leave you in check
-      raise ArgumentError.new "Move not possible, will put you in check"
+      raise MoveError.new "Move not possible, will put you in check"
+    elsif move_to_object.color != current_color # FILL THIS IN
+      raise MoveError.new "You moved for the wrong team"
     else
       # make move
       move!(start_pos, end_pos)
@@ -529,7 +444,7 @@ class Board
     self.grid[end_x][end_y].board = nil if !self.grid[end_x][end_y].nil?
 
     self.grid[end_x][end_y] = self.grid[start_x][start_y]
-    self.grid[end_x][end_y].position = e_pos if !self.grid[end_x][end_y].nil?
+    self.grid[end_x][end_y].position = e_pos unless self.grid[end_x][end_y].nil?
     self.grid[start_x][start_y] = nil
   end
 
@@ -597,29 +512,104 @@ class Board
   end
 end
 
+# GAME class -------------------------------------------------
+
+class Game
+
+  attr_accessor :new_game
+  attr_reader :first_player, :second_player
+
+  def initialize
+    @new_game = Board.new
+    @first_player = HumanPlayer.new(:w) #white
+    @second_player = HumanPlayer.new(:b) #black
+  end
+
+  def play
+    puts "White moves first. Please enter move (ex: f2, f3)"
+
+    current_player = @first_player
+    begin
+      while !@new_game.checkmate?(current_player.color)
+        @new_game.prettier_print
+        move_arr = current_player.play_turn
+        new_game.move(move_arr[0], move_arr[1], current_player.color)
+        current_player = current_player.color == :w ? @second_player : @first_player
+      end
+    rescue MoveError => e
+      puts "Error due to #{e}"
+      retry
+    end
+
+    print "You lost #{current_player.color} player. You suck."
+  end
+
+end
+
+class HumanPlayer
+
+  attr_reader :color
+
+  def initialize(color)
+    @color = color
+  end
+
+  def play_turn
+    puts "Please make your move, #{self.color}:"
+    user_input = gets.chomp
+    move_arr = convert_input_to_array(user_input.split(', '))
+  end
+
+  def convert_input_to_array(user_input)
+    convert_cols = {
+      "A" => 0,
+      "B" => 1,
+      "C" => 2,
+      "D" => 3,
+      "E" => 4,
+      "F" => 5,
+      "G" => 6,
+      "H" => 7
+    }
+
+    start_pos, end_pos = user_input[0].reverse.split(''), user_input[1].reverse.split('') # "2f, 2f"
+
+    start_pos[0] = 8 - start_pos[0].to_i
+    start_pos[1] = convert_cols[start_pos[1].upcase!]
+    end_pos[0]   = 8 - end_pos[0].to_i
+    end_pos[1]   = convert_cols[end_pos[1].upcase!]
+
+    p [[start_pos[0], start_pos[1]], [end_pos[0], end_pos[1]]]
+    [[start_pos[0], start_pos[1]], [end_pos[0], end_pos[1]]]
+  end
+
+end
 
 
 
 #--------T-E-S-T-S---------
 
-game = Board.new
 
-new_game = game.dup
+Game.new.play
 
-game.prettier_print
-puts
-
-#TEST FOR CHECKMATE
-
-game.move!([6,5], [5,5])
-game.move!([1,4], [3,4])
-game.move!([6,6], [4,6])
-game.move!([0,3], [4,7])
-
-game.prettier_print
-
-p "checkmate w #{game.checkmate?(:w)}"
-p "checkmate b #{game.checkmate?(:b)}"
+# game = Board.new
+#
+# new_game = game.dup
+#
+# game.prettier_print
+# puts
+#
+# #TEST FOR CHECKMATE
+#
+# game.move!([6,5], [5,5])
+# game.move!([1,4], [3,4])
+# game.move!([6,6], [4,6])
+# game.move!([0,3], [4,7])
+#
+# game.prettier_print
+#
+# p "checkmate w #{game.checkmate?(:w)}"
+# p "checkmate b #{game.checkmate?(:b)}"
 
 
 
