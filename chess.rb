@@ -20,11 +20,6 @@ class Piece
     piece_dup
   end
 
-  def moves
-    # returns array of places that piece can move to
-    # this should never be called, subclasses version should be called
-    p "Piece"
-  end
 
   def valid_moves
     # filters out the #moves of a Piece that would leave the player in check
@@ -144,6 +139,123 @@ class Knight < SteppingPiece
   end
 end
 
+class Pawn < SteppingPiece
+
+  def initialize(position, board, name, color)
+    super(position, board, name, color)
+  end
+
+
+  def moves   #still has to check that piece eatable
+    possible_moves =[]
+    if color == :b && position[0] == 1
+      (self.regular_moves + self.initial_moves).each do |offset|
+        next if offset[0] < 0
+        d_x = position[0] + offset[0]
+        d_y = position[1] + offset[1]
+
+        if (d_x).between?(0,7) && (d_y).between?(0,7)
+          possible_moves << [d_x,d_y] unless occupied?(d_x,d_y) # && inedible?(d_x,d_y)
+        end
+      end
+    end
+
+    if color == :b && position[0] != 1
+      (self.regular_moves).each do |offset|
+        next if offset[0] < 0
+        d_x = position[0] + offset[0]
+        d_y = position[1] + offset[1]
+
+        if (d_x).between?(0,7) && (d_y).between?(0,7)
+          possible_moves << [d_x,d_y] unless occupied?(d_x,d_y) # && inedible?(d_x,d_y)
+        end
+      end
+    end
+
+    if color == :b
+      (self.diagonal_moves).each do |offset|
+        next if offset[0] < 0
+        d_x = position[0] + offset[0]
+        d_y = position[1] + offset[1]
+
+        if (d_x).between?(0,7) && (d_y).between?(0,7)
+          possible_moves << [d_x,d_y] if (occupied?(d_x,d_y) && !inedible?(d_x,d_y))
+        end
+      end
+    end
+
+    if color == :w && position[0] == 6
+      (self.regular_moves + self.initial_moves).each do |offset|
+        next if offset[0] > 0
+        d_x = position[0] + offset[0]
+        d_y = position[1] + offset[1]
+
+        if (d_x).between?(0,7) && (d_y).between?(0,7)
+          possible_moves << [d_x,d_y] unless occupied?(d_x,d_y) # && inedible?(d_x,d_y)
+        end
+      end
+    end
+
+    if color == :w && position[0] != 6
+      (self.regular_moves).each do |offset|
+        next if offset[0] > 0
+        d_x = position[0] + offset[0]
+        d_y = position[1] + offset[1]
+
+        if (d_x).between?(0,7) && (d_y).between?(0,7)
+          possible_moves << [d_x,d_y] unless occupied?(d_x,d_y) # && inedible?(d_x,d_y)
+        end
+      end
+    end
+
+    if color == :w
+      (self.diagonal_moves).each do |offset|
+        next if offset[0] > 0
+        d_x = position[0] + offset[0]
+        d_y = position[1] + offset[1]
+
+        if (d_x).between?(0,7) && (d_y).between?(0,7)
+          possible_moves << [d_x,d_y] if (occupied?(d_x,d_y) && !inedible?(d_x,d_y))
+        end
+      end
+    end
+
+    possible_moves
+  end
+
+  def move_dirs
+    # uses #move_dirs
+    # returns array of places that piece can move to
+    # know what directions a piece can move in
+
+  end
+
+  def regular_moves
+    [
+      [ 1, 0], #black
+      [-1, 0]  #white
+    ]
+  end
+
+  def initial_moves
+    [
+      [ 2, 0], #black
+      [-2, 0], #white
+    ]
+  end
+
+  def diagonal_moves
+    [
+      [ 1, 1], #black
+      [ 1,-1], #black
+      [-1, 1], #white
+      [-1,-1] #white
+    ]
+  end
+
+
+end
+
 class King < SteppingPiece
 
   def initialize(position, board, name, color)
@@ -232,8 +344,8 @@ class Board
       C: [[0,0], [0,7], [7,0], [7,7]],
       N: [[0,1], [0,6], [7,1], [7,6]],
       B: [[0,2], [0,5], [7,2], [7,5]],
-      K: [[0,3], [7,3]],
-      Q: [[0,4], [7,4]]
+      Q: [[0,3], [7,3]],
+      K: [[0,4], [7,4]],
     }
 
     positions.each do |name, positions|
@@ -251,6 +363,13 @@ class Board
         elsif name == :Q
           self.grid[x][y] = Queen.new(pos, self, name, color)
         end
+      end
+    end
+
+    [1,6].each do |x|
+      8.times do |y|
+        color = x == 1 ? :b : :w
+        self.grid[x][y] = Pawn.new([x,y], self, :P, color)
       end
     end
   end  # END BOARD#create_board
@@ -393,35 +512,65 @@ new_game = game.dup
 game.print_board
 puts
 
+# TEST FOR CHECKMATE
 
-# move Black Queen
-game.move!([0,4], [3,7])
-
-# move White Queen
-game.move!([7,4], [6,3])
-
-game.move!([7,3], [4,7])
+game.move!([6,5], [5,5])
+game.move!([1,4], [3,4])
+game.move!([6,6], [4,6])
+game.move!([0,3], [4,7])
 
 game.print_board
-puts
 
-b_queen = game.grid[3][7]
-
-w_queen = game.grid[6][3]
+p "checkmate w #{game.checkmate?(:w)}"
+p "checkmate b #{game.checkmate?(:b)}"
 
 
-#print w_queen.moves
+
+# # TEST PAWN
+# pawn = game.grid[1][0]
+# p "pawn.name #{pawn.name}"
+# p pawn.moves
+# game.move!([1,0], [2,0])
+# game.move!([6,1], [3,1])
+#
+# game.print_board
+# puts
+# p pawn.moves
+#
+# #-------------
+
+# # move Black Queen
+# game.move!([0,4], [3,7])
+#
+# # move White Queen
+# game.move!([7,4], [6,3])
+#
+# game.move!([7,3], [4,7])
+#
+# game.print_board
+# puts
+#
+# b_queen = game.grid[3][7]
+#
+# w_queen = game.grid[6][3]
+#
+#
+# #print w_queen.moves
+#
+#
+# p "Valid moves of white queen at position #{w_queen.position}"
+# p w_queen.valid_moves
+#
+# p "Valid moves of black queen at position #{b_queen.position}"
+# p b_queen.valid_moves
+#
+#
+# p "w checked? #{game.checked?(w_queen.color)}"
+# p "b checked? #{game.checked?(b_queen.color)}"
+#
+# p "w checkmate? #{game.checkmate?(w_queen.color)}"
+# p "b checkmate? #{game.checkmate?(b_queen.color)}"
+
+#-- Test pawn
 
 
-p "Valid moves of white queen at position #{w_queen.position}"
-p w_queen.valid_moves
-
-p "Valid moves of black queen at position #{b_queen.position}"
-p b_queen.valid_moves
-
-
-p "w checked? #{game.checked?(w_queen.color)}"
-p "b checked? #{game.checked?(b_queen.color)}"
-
-p "w checkmate? #{game.checkmate?(w_queen.color)}"
-p "b checkmate? #{game.checkmate?(b_queen.color)}"
