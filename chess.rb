@@ -267,22 +267,22 @@ class Board
   end
 
   #HELPER move to private
-  def find_oponents(color)
-    oponent_color = color == :w ? :b : :w
-    oponents = []
+  def find_pieces(color)
+    pieces = []
     self.grid.each do |row|
       row.each do |piece|
         next if piece.nil?
-        oponents << piece if piece.color == oponent_color
+        pieces << piece if piece.color == color
       end
     end
 
-    oponents
+    pieces
   end
 
   def checked?(color)
     king_pos = find_king(color)
-    oponents = find_oponents(color)
+    oponent_color = color == :w ? :b : :w
+    oponents = find_pieces(oponent_color)
     checked = false
     oponents.each do |opponent_piece|
       checked = true if opponent_piece.moves.include?(king_pos)
@@ -295,6 +295,18 @@ class Board
   end
 
   def checkmate?(color)
+    checkmate = false
+    if checked?(color)
+      my_pieces = find_pieces(color)
+
+      my_pieces.delete_if do |piece|
+        piece.valid_moves.empty?
+      end
+
+      checkmate = my_pieces.empty?
+    end
+
+    checkmate
     # If the player is in check, and if none of the player's pieces have any #valid_moves, then the player is in checkmate.
   end
 
@@ -317,13 +329,22 @@ class Board
   def move(start_pos, end_pos)
     start_x, start_y = start_pos[0], start_pos[1]
     end_x, end_y = end_pos[0], end_pos[1]
+    move_to_object = self.grid[start_x][start_y]
 
-    if self.grid[start_x][start_x].nil?
+    if move_to_object.nil?
       #raise exception there is no piece at start
-    end
-    if !self.grid[start_x][start_y].moves.include?(grid[end_x][end_].position)
+      raise ArgumentError.new "Wrong start position, no piece yo"
+    elsif !move_to_object.moves.include?(grid[end_x][end_y].position)
       #raise end position not in possible moves
+      raise ArgumentError.new "Wrong end position, not possible"
+    elsif !move_to_object.valid_moves.include?(end_pos)
+      #raise exception, that move will leave you in check
+      raise ArgumentError.new "Move not possible, will put you in check"
+    else
+      # make move
+      move!(start_pos, end_pos)
     end
+
 
     # should update the 2d grid and also the moved piece's position.
     # raise exception if: (a) there is no piece at start or (b) the piece cannot move to end
@@ -373,27 +394,34 @@ game.print_board
 puts
 
 
-# move White Queen
-game.move!([0,4], [1,3])
-
 # move Black Queen
+game.move!([0,4], [3,7])
+
+# move White Queen
 game.move!([7,4], [6,3])
 
+game.move!([7,3], [4,7])
 
 game.print_board
 puts
 
-w_queen = game.grid[1][3]
+b_queen = game.grid[3][7]
 
-b_queen = game.grid[6][3]
+w_queen = game.grid[6][3]
 
 
 #print w_queen.moves
 
 
+p "Valid moves of white queen at position #{w_queen.position}"
+p w_queen.valid_moves
 
-print w_queen.valid_moves
+p "Valid moves of black queen at position #{b_queen.position}"
+p b_queen.valid_moves
 
 
+p "w checked? #{game.checked?(w_queen.color)}"
+p "b checked? #{game.checked?(b_queen.color)}"
 
-
+p "w checkmate? #{game.checkmate?(w_queen.color)}"
+p "b checkmate? #{game.checkmate?(b_queen.color)}"
