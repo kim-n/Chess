@@ -2,8 +2,8 @@
 class Piece
   attr_accessor :position, :board, :name, :color
 
-  ORTHOGONAL = [[0,1],[1,0]]
-  DIAGONALS = [[1,1]]
+  ORTHOGONAL = [[ 0, 1],[ 1, 0],[-1, 0],[ 0,-1]]
+  DIAGONALS  = [[ 1, 1],[-1,-1],[ 1,-1],[-1, 1]]
 
   def initialize(position, board, name, color)
     self.position = position
@@ -165,7 +165,7 @@ class Pawn < SteppingPiece
     possible_moves = []
     offsets = foward + diagonal
 
-    if position[0] == 1 || 6
+    if ( (position[0] == 1 && self.color == :b) || (position[0] == 6 && self.color == :w) )
       offsets += initial
     end
 
