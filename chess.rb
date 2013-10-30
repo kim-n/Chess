@@ -146,7 +146,7 @@ class Pawn < SteppingPiece
   end
 
 
-  def moves   #still has to check that piece eatable
+  def moves  #still has to check that piece eatable
     possible_moves =[]
     if color == :b && position[0] == 1
       (self.regular_moves + self.initial_moves).each do |offset|
@@ -220,6 +220,44 @@ class Pawn < SteppingPiece
       end
     end
 
+    possible_moves
+  end
+
+  def moves_compact
+    foward =     [
+      [ 1, 0], #black
+    ]
+
+    initial =     [
+      [ 2, 0], #black
+    ]
+
+    diagonal =     [
+      [ 1, 1], #black
+      [ 1,-1], #black
+    ]
+
+    possible_moves = []
+    offsets = foward + diagonal
+
+    if position[0] == 1 || 6
+      offsets += initial
+    end
+
+    offsets.each do |offset|
+      offset[0] = 0-offset[0] if color == :w #turns x negative
+      d_x = position[0] + offset[0]
+      d_y = position[1] + offset[1]
+
+      if (d_x).between?(0,7) && (d_y).between?(0,7)
+        if offset[1] != 0 # a diagonal offset
+          possible_moves << [d_x,d_y] if (occupied?(d_x,d_y) && !inedible?(d_x,d_y))
+        else
+          possible_moves << [d_x,d_y] unless occupied?(d_x,d_y)
+        end
+      end
+
+    end
     possible_moves
   end
 
@@ -348,20 +386,29 @@ class Board
       K: [[0,4], [7,4]],
     }
 
+    symbs = {
+      N: ["\u2658", "\u265E"],
+      B: ["\u2657", "\u265D"],
+      C: ["\u2656", "\u265C"],
+      Q: ["\u2655", "\u265B"],
+      K: ["\u2654", "\u265A"],
+      P: ["\u2659", "\u265F"]
+    }
     positions.each do |name, positions|
       positions.each do |pos|
         x, y = pos[0], pos[1]
         color = pos[0] == 0 ? :b : :w
+        set = pos[0] == 0 ? 1 : 0
         if name == :C
-          self.grid[x][y] = Castle.new(pos, self, name, color)
+          self.grid[x][y] = Castle.new(pos, self, symbs[name][set], color)
         elsif name == :B
-          self.grid[x][y] = Bishop.new(pos, self, name, color)
+          self.grid[x][y] = Bishop.new(pos, self, symbs[name][set], color)
         elsif name == :N
-          self.grid[x][y] = Knight.new(pos, self, name, color)
+          self.grid[x][y] = Knight.new(pos, self, symbs[name][set], color)
         elsif name == :K
-          self.grid[x][y] = King.new(pos, self, name, color)
+          self.grid[x][y] = King.new(pos, self, symbs[name][set], color)
         elsif name == :Q
-          self.grid[x][y] = Queen.new(pos, self, name, color)
+          self.grid[x][y] = Queen.new(pos, self, symbs[name][set], color)
         end
       end
     end
@@ -369,17 +416,19 @@ class Board
     [1,6].each do |x|
       8.times do |y|
         color = x == 1 ? :b : :w
-        self.grid[x][y] = Pawn.new([x,y], self, :P, color)
+        set = x == 1 ? 1 : 0
+        self.grid[x][y] = Pawn.new([x,y], self, symbs[:P][set], color)
       end
     end
   end  # END BOARD#create_board
 
   #HELPER move to private
   def find_king(color)
+    king = color == :w ? "\u2654" : "\u265A"
     self.grid.each do |row|
       row.each do |piece|
         if !piece.nil?
-          return piece.position if piece.name == :K && piece.color == color
+          return piece.position if piece.name == king && piece.color == color
         end
       end
     end
@@ -406,7 +455,6 @@ class Board
     oponents.each do |opponent_piece|
       checked = true if opponent_piece.moves.include?(king_pos)
     end
-
     checked
     # returns whether a player is in check
     # finding the position of the king on the board
@@ -498,6 +546,55 @@ class Board
       p pretty_row
     end
   end
+
+  def pretty_print
+    grid.each do |row|
+      row.each do |col|
+        if col.nil?
+          print "-  "
+        else
+          print "#{col.name}  "
+        end
+      end
+      print "\n"
+    end
+  end
+
+  def prettier_print
+    print "   "
+    8.times do |i|
+      print "  #{('A'.ord+i).chr}"
+    end
+    print "\n"
+    print "   "
+    8.times do |i|
+      print "---"
+    end
+
+    print "\n\n"
+    8.times do |i|
+      print "|#{8-i}|  "
+      8.times do |j|
+        if grid[i][j].nil?
+          print "-  "
+        else
+          print "#{grid[i][j].name}  "
+        end
+      end
+      print "|#{8-i}|\n\n"
+    end
+
+    print "   "
+    8.times do |i|
+      print "---"
+    end
+    print "\n"
+    print "   "
+    8.times do |i|
+      print "  #{('A'.ord+i).chr}"
+    end
+    print "\n\n"
+  end
 end
 
 
@@ -509,17 +606,17 @@ game = Board.new
 
 new_game = game.dup
 
-game.print_board
+game.prettier_print
 puts
 
-# TEST FOR CHECKMATE
+#TEST FOR CHECKMATE
 
 game.move!([6,5], [5,5])
 game.move!([1,4], [3,4])
 game.move!([6,6], [4,6])
 game.move!([0,3], [4,7])
 
-game.print_board
+game.prettier_print
 
 p "checkmate w #{game.checkmate?(:w)}"
 p "checkmate b #{game.checkmate?(:b)}"
