@@ -28,18 +28,14 @@ class Piece
   def valid_moves
     # filters out the #moves of a Piece that would leave the player in check
     possible_moves = self.moves
-    arr = []
 
-    possible_moves.each do |pos|
+    possible_moves.delete_if do |pos|
       duped_board = self.board.dup
       duped_board.move!(self.position, pos)
-      # p duped_board.checked?(self.color)
-      # puts duped_board.board[pos[0]][pos[1]].color
-      duped_board.print_board
-    # arr << pos unless duped_board.checked?(duped_board.board[pos[0]][pos[1]].color)
+      duped_board.checked?(self.color)
     end
-
-    arr
+    
+    possible_moves
   end
 
   def move_into_check?(pos)
@@ -319,12 +315,14 @@ class Board
 
     8.times do |x|
       8.times do |y|
-        dup_board.board[x][y] = self.board[x][y].dup unless self.board[x][y].nil?
+        unless self.board[x][y].nil?
+          dup_board.board[x][y] = self.board[x][y].dup  #dup the piece
+          dup_board.board[x][y].board = dup_board       #sets dupped piece.board to dupped board
+        end
       end
     end
-
+    
     dup_board
-
   end
 
   def move(start_pos, end_pos)
@@ -373,44 +371,40 @@ class Board
   end
 end
 
-fi_game = Board.new
 
-game = fi_game.dup
-#game.move!([7,4], [6,3])
 
-game.move!([0,4], [1,3])
+
+#--------T-E-S-T-S---------
+
+game = Board.new
+
+new_game = game.dup
 
 game.print_board
-
-queen = game.board[1][3]
-p queen.name
-
-p "#{game.board[0][0].color} top color"
-p game.checked?(:w)
-
-p queen.valid_moves
+puts
 
 
-# king = King.new([1,1], 2,2,:w)
-# game.board[2][2] = king
-#game.print_board
-# knight = game.board[0][1]
-# p knight.moves
-# game.move!([0,0], [4,4])
-#
-# #game.print_board
-#
-# #knight = Knight.new(0,1,2,3)
-# # king = knight.dup
-# # p knight
-#
-#
-# new_game = game.dup
-# game.move!([4,4], [1,1])
-# game.print_board
-# p game.object_id
-# new_game.print_board
-# p new_game.object_id
-#
-# p game.board[0][1].object_id
-# p new_game.board[0][4].object_id
+# move White Queen
+game.move!([0,4], [1,3])
+
+# move Black Queen
+game.move!([7,4], [6,3])
+
+
+game.print_board
+puts
+
+w_queen = game.board[1][3]
+
+b_queen = game.board[6][3]
+
+
+#print w_queen.moves
+
+
+
+print w_queen.valid_moves
+
+
+
+
